@@ -1,0 +1,100 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import test from 'node:test'
+import { availableCount, drawQuestions, readSettings, roundSize, saveSettings } from '../src/dictionaries.ts'
+import { practiceReducer, roundStats, startRound } from '../src/practice.ts'
+
+const characters = (start, length) => Array.from(
+  { length }, (_, index) => String.fromCodePoint(start + index),
+)
+const shared = characters(0x4e00, 25)
+const traditional = characters(0x5000, 25)
+const simplified = characters(0x5200, 25)
+const fixture = {
+  banks: {
+    traditional: { beginner: [...shared, ...traditional], full: [...shared, ...traditional, '語'] },
+    simplified: { beginner: [...shared, ...simplified], full: [...shared, ...simplified, '语'] },
+  },
+  codes: Object.fromEntries([...shared, ...traditional, ...simplified, '語', '语'].map(
+    (character) => [character, ['ABC', 'DEF']],
+  )),
+}
+
+test('every bank and difficulty combination generates a unique 20-question round', () => {
+  for (const difficulty of ['beginner', 'full']) {
+    for (const banks of [['traditional'], ['simplified'], ['traditional', 'simplified']]) {
+      const settings = { banks, difficulty }
+      const eligible = new Set(banks.flatMap((bank) => fixture.banks[bank][difficulty]))
+      assert.equal(availableCount(fixture, settings), eligible.size)
+      for (const random of [() => 0, () => 0.99]) {
+        const round = drawQuestions(fixture, settings, random)
+        assert.equal(round.length, roundSize)
+        assert.equal(new Set(round.map(({ character }) => character)).size, roundSize)
+        assert.ok(round.every(({ character }) => eligible.has(character)))
+        if (banks.length === 2) {
+          assert.equal(round.filter(({ language }) => language === 'zh-Hant-TW').length, 10)
+          assert.equal(round.filter(({ language }) => language === 'zh-Hans-CN').length, 10)
+          assert.ok(round.some(({ character }) => traditional.includes(character) || character === '語'))
+          assert.ok(round.some(({ character }) => simplified.includes(character) || character === '语'))
+        }
+      }
+    }
+  }
+})
+
+test('mixed rounds fill a short quota from the other bank without duplicates', () => {
+  const data = {
+    ...fixture,
+    banks: { ...fixture.banks, traditional: { ...fixture.banks.traditional, beginner: shared.slice(0, 3) } },
+  }
+  const result = drawQuestions(data, { banks: ['traditional', 'simplified'], difficulty: 'beginner' }, () => 0.99)
+  assert.equal(new Set(result.map(({ character }) => character)).size, 20)
+  assert.equal(result.filter(({ language }) => language === 'zh-Hant-TW').length, 3)
+  assert.deepEqual(drawQuestions(data, { banks: [], difficulty: 'beginner' }), [])
+})
+
+test('a complete alternate code advances the same round and reports the accepted answer', () => {
+  const exercises = [{ character: '次', code: 'MMNO', alternateCodes: ['IMNO'] }]
+  const round = startRound('characters', exercises)
+  const wrong = practiceReducer(practiceReducer(round, { type: 'edit', value: 'im' }), { type: 'submit' })
+  assert.equal(wrong.wrongEntries, 1)
+  const solved = practiceReducer(practiceReducer(wrong, { type: 'edit', value: 'imno' }), { type: 'submit' })
+  assert.equal(solved.exercises, exercises)
+  assert.equal(solved.acceptedCode, 'IMNO')
+  assert.deepEqual(roundStats(solved), { completed: 1, solved: 1, skipped: 0, accuracy: 0 })
+})
+
+test('settings retain the last playable selection when the checkboxes are cleared', () => {
+  const storage = new Map()
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { getItem: (key) => storage.get(key), setItem: (key, value) => storage.set(key, value) },
+  })
+  const selection = { banks: ['traditional', 'simplified'], difficulty: 'full' }
+  try {
+    saveSettings(selection)
+    saveSettings({ banks: [], difficulty: 'beginner' })
+    assert.deepEqual(readSettings(), selection)
+  } finally {
+    delete globalThis.localStorage
+  }
+})
+
+test('the published dictionary supports all bank and difficulty combinations', () => {
+  const data = JSON.parse(readFileSync(new URL('../public/dictionaries.json', import.meta.url), 'utf8'))
+  assert.equal(data.banks.traditional.full.length, 4808)
+  assert.equal(data.banks.simplified.full.length, 3500)
+
+  for (const bank of Object.values(data.banks)) {
+    assert.equal(new Set(bank.full).size, bank.full.length)
+    assert.ok(bank.beginner.length >= roundSize)
+    const full = new Set(bank.full)
+    assert.ok(bank.beginner.every((character) => full.has(character)))
+    for (const character of full) {
+      const codes = data.codes[character]
+      assert.ok(codes?.length && codes.every((code) => /^[A-Y]{1,5}$/.test(code)))
+    }
+  }
+
+  assert.deepEqual(data.codes['次'], ['IMNO', 'MMNO'])
+})

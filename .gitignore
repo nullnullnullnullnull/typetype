@@ -1,4 +1,6 @@
 node_modules/
 dist/
+dist-local/
+/.local/
 *.tsbuildinfo
 .DS_Store

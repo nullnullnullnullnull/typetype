@@ -1,6 +1,8 @@
 export interface Exercise {
   character: string
   code: string
+  alternateCodes?: readonly string[]
+  language?: 'zh-Hant-TW' | 'zh-Hans-CN'
 }
 
 const keyLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -23,26 +25,6 @@ export const lessons = {
   characters: {
     label: '常用字取碼',
     prompt: '輸入這個字的完整倉頡碼。',
-    exercises: [
-      { character: '明', code: 'AB' },
-      { character: '林', code: 'DD' },
-      { character: '休', code: 'OD' },
-      { character: '好', code: 'VND' },
-      { character: '你', code: 'ONF' },
-      { character: '中', code: 'L' },
-      { character: '日', code: 'A' },
-      { character: '問', code: 'ANR' },
-      { character: '品', code: 'RRR' },
-      { character: '森', code: 'DDD' },
-      { character: '晶', code: 'AAA' },
-      { character: '字', code: 'JND' },
-      { character: '安', code: 'JV' },
-      { character: '江', code: 'EM' },
-      { character: '唱', code: 'RAA' },
-      { character: '信', code: 'OYMR' },
-      { character: '語', code: 'YRMMR' },
-      { character: '學', code: 'HBND' },
-    ] satisfies Exercise[],
   },
 }
 

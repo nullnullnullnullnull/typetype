@@ -1,0 +1,31 @@
+TypeType 五代倉頡練習資料來源與授權
+
+臺灣常用字
+資料提供：數位發展部，CNS11643 中文標準交換碼全字庫網站
+https://www.cns11643.gov.tw/
+來源：常用國字標準字體表（《CNS 11643》96 年公布）索引
+https://www.cns11643.gov.tw/searchSY.jsp?ID=122
+TypeType 將 4,808 個字的索引轉為 Unicode，並與教育部字表核對。
+授權：政府資料開放授權條款－第 1 版
+https://data.gov.tw/license
+
+繁體入門
+資料提供：國家教育研究院《臺灣華語文能力基準漢字表》（111-09-20）
+https://coct.naer.edu.tw/page.jsp?ID=41
+授權：CC BY（姓名標示），以原始下載頁聲明為準。
+TypeType 擷取第 1 級（含第 1* 級），取與臺灣常用字的交集並轉為練習資料。
+
+大陆规范常用字
+資料提供：Unicode Consortium，Unihan 18.0.0
+https://www.unicode.org/reports/tr38/#kTGH
+TypeType 從 kTGH 欄位擷取 2013 年《通用规范汉字表》第 1 至 3,500 號字。
+授權：Unicode License V3，全文見同目錄的 Unicode-LICENSE.txt。
+簡體入門為 TypeType 選編。
+
+五代倉頡取碼
+資料來源：Jackchows《倉頡五代補完計劃》，源自倉頡之友・馬來西亞《五倉世紀》。
+版本：c9b64e77951cba48bdfa5de8eaedd1a908666b9b
+https://github.com/Jackchows/Cangjie5/tree/c9b64e77951cba48bdfa5de8eaedd1a908666b9b
+原始來源：https://www.chinesecj.com/forum/forum.php?mod=viewthread&tid=2596
+TypeType 擷取練習字的完整碼，篩選可接受的替代碼並轉為 JSON。
+採所用版本的 MIT 聲明，版權聲明和授權全文見同目錄的 Cangjie5-LICENSE.txt。

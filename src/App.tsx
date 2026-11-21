@@ -1,26 +1,52 @@
-import { useEffect, useReducer, useRef, type FormEvent } from 'react'
+import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react'
 import { keyboardRows, lessons, roots, type LessonId } from './cangjie'
+import { availableCount, drawQuestions, readSettings, roundSize, saveSettings, type Dictionaries, type Settings } from './dictionaries'
 import { practiceReducer, roundStats, startRound } from './practice'
+import { PracticeSettings } from './PracticeSettings'
 
 const lessonIds: LessonId[] = ['roots', 'characters']
 
-export function App() {
-  const [round, dispatch] = useReducer(practiceReducer, 'characters', startRound)
+export function App({ dictionaries }: { dictionaries: Dictionaries }) {
+  const [settings, setSettings] = useState(readSettings)
+  const [activeSettings, setActiveSettings] = useState(settings)
+  const [round, dispatch] = useReducer(practiceReducer, settings, (initialSettings) =>
+    startRound('characters', drawQuestions(dictionaries, initialSettings)),
+  )
   const input = useRef<HTMLInputElement>(null)
   const summary = useRef<HTMLHeadingElement>(null)
 
   const lesson = lessons[round.lesson]
-  const total = lesson.exercises.length
+  const total = round.exercises.length
   const stats = roundStats(round)
-  const exercise = lesson.exercises[stats.completed]
+  const exercise = round.exercises[stats.completed]
   const finished = stats.completed === total
-  const previous = lesson.exercises[stats.completed - 1]
+  const previous = round.exercises[stats.completed - 1]
   const previousOutcome = round.outcomes.at(-1)
   const accuracy = stats.accuracy === null ? '—' : `${stats.accuracy}%`
+  const count = availableCount(dictionaries, settings)
+  const canRestart = round.lesson === 'roots' || count >= roundSize
+  const pending = activeSettings.difficulty !== settings.difficulty
+    || activeSettings.banks.length !== settings.banks.length
+    || settings.banks.some((bank) => !activeSettings.banks.includes(bank))
 
   useEffect(() => {
     if (finished) summary.current?.focus()
   }, [finished])
+
+  function changeSettings(next: Settings) {
+    setSettings(next)
+    saveSettings(next)
+  }
+
+  function begin(lessonId: LessonId) {
+    if (lessonId === 'characters') {
+      const next = count >= roundSize ? settings : activeSettings
+      dispatch({ type: 'start', round: startRound(lessonId, drawQuestions(dictionaries, next)) })
+      setActiveSettings(next)
+      return
+    }
+    dispatch({ type: 'start', round: startRound(lessonId, lessons.roots.exercises) })
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -33,7 +59,7 @@ export function App() {
     : previousOutcome === 'skipped'
       ? `已跳過「${previous.character}」，正確碼是 ${previous.code}。`
       : previous
-        ? `答對了！「${previous.character}」的倉頡碼是 ${previous.code}。`
+        ? `答對了！「${previous.character}」的倉頡碼是 ${round.acceptedCode}。`
         : ''
 
   return (
@@ -63,13 +89,18 @@ export function App() {
               aria-pressed={id === round.lesson}
               className="mode-button"
               onClick={() => {
-                if (id !== round.lesson) dispatch({ type: 'start', lesson: id })
+                if (id !== round.lesson) begin(id)
               }}
             >
               {lessons[id].label}
             </button>
           ))}
         </div>
+
+        {round.lesson === 'characters' && (
+          <PracticeSettings dictionaries={dictionaries} settings={settings} count={count}
+            pending={pending} onChange={changeSettings} onStart={() => begin('characters')} />
+        )}
 
         <div className="workspace">
           <section className="panel practice-panel" aria-label={lesson.label}>
@@ -82,7 +113,7 @@ export function App() {
               <>
                 <div className="question" aria-live="polite" aria-atomic="true">
                   <p>{lesson.prompt}</p>
-                  <div className="character">{exercise.character}</div>
+                  <div className="character" lang={exercise.language}>{exercise.character}</div>
                 </div>
 
                 <form onSubmit={submit}>
@@ -124,6 +155,9 @@ export function App() {
                 <div className="hint" id="hint" hidden={!round.hint}>
                   <strong>{exercise.code}</strong>
                   <span>{Array.from(exercise.code, (key) => roots[key]).join(' · ')}</span>
+                  {!!exercise.alternateCodes?.length && (
+                    <span className="alternate-codes">其他完整碼 {exercise.alternateCodes.join(' · ')}</span>
+                  )}
                 </div>
               </>
             ) : (
@@ -131,8 +165,8 @@ export function App() {
                 <h3 tabIndex={-1} ref={summary}>本輪完成！</h3>
                 <p>答對 {stats.solved} 題，跳過 {stats.skipped} 題。首答正確率 {accuracy}。</p>
                 <p className="feedback">{feedback}</p>
-                <button className="button button-primary" type="button"
-                  onClick={() => dispatch({ type: 'start', lesson: round.lesson })}>
+                <button className="button button-primary" type="button" disabled={!canRestart}
+                  onClick={() => begin(round.lesson)}>
                   再練一輪
                 </button>
               </div>
@@ -143,8 +177,8 @@ export function App() {
             <section className="panel progress-panel" aria-labelledby="progress-title">
               <div className="panel-heading">
                 <h2 id="progress-title">本輪進度</h2>
-                <button className="text-button" type="button"
-                  onClick={() => dispatch({ type: 'start', lesson: round.lesson })}>
+                <button className="text-button" type="button" disabled={!canRestart}
+                  onClick={() => begin(round.lesson)}>
                   重新開始
                 </button>
               </div>
@@ -185,6 +219,17 @@ export function App() {
             </section>
           </div>
         </div>
+
+        <details className="sources">
+          <summary>字庫來源與授權</summary>
+          <ul>
+            <li><a href="https://www.cns11643.gov.tw/searchSY.jsp?ID=122">數位發展部 CNS11643 中文標準交換碼全字庫</a>，臺灣 4,808 字索引轉為 Unicode，採 <a href="https://data.gov.tw/license">政府資料開放授權條款第 1 版</a>。</li>
+            <li><a href="https://coct.naer.edu.tw/page.jsp?ID=41">國家教育研究院《臺灣華語文能力基準漢字表》</a>，CC BY。擷取第 1 級（含第 1* 級）並與臺灣字庫比對。</li>
+            <li><a href="https://www.unicode.org/reports/tr38/#kTGH">Unicode Unihan 18.0.0</a>，擷取《通用规范汉字表》一級字，採 <a href={`${import.meta.env.BASE_URL}Unicode-LICENSE.txt`}>Unicode License V3</a>。</li>
+            <li><a href="https://github.com/Jackchows/Cangjie5/tree/c9b64e77951cba48bdfa5de8eaedd1a908666b9b">倉頡五代補完計劃</a>，源自倉頡之友・馬來西亞《五倉世紀》。TypeType 擷取練習字的完整碼，隨附 <a href={`${import.meta.env.BASE_URL}Cangjie5-LICENSE.txt`}>MIT 版權聲明與授權全文</a>。</li>
+          </ul>
+          <p><a href={`${import.meta.env.BASE_URL}THIRD-PARTY-NOTICES.txt`}>完整第三方資料聲明</a></p>
+        </details>
 
         <footer className="footer">
           <span>TypeType</span>

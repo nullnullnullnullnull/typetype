@@ -153,3 +153,38 @@ progress::-moz-progress-bar { background: var(--ink); }
   .keyboard { --key-gap: 3px; }
   .key strong { font-size: .92rem; }
 }
+
+.settings-panel { margin-bottom: 23px; }
+.settings-fields { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 20px; }
+.settings-fields fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.settings-fields legend { padding: 0; margin-bottom: 10px; font-weight: 900; }
+.bank-presets, .bank-options, .difficulty-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.bank-presets { margin-bottom: 10px; }
+.bank-presets .button[aria-pressed="true"] { background: var(--purple); }
+.settings-fields label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin: 0;
+  padding: 5px 9px;
+  border: var(--rule);
+  cursor: pointer;
+}
+.settings-fields label:has(input:checked) { background: var(--lime); }
+.settings-fields input { margin: 0; accent-color: var(--ink); }
+.bank-count { font: 700 .84rem var(--mono); color: #49463c; }
+.settings-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 15px; margin-top: 12px; }
+.settings-footer p { margin: 0; font-size: .875rem; }
+.settings-footer .button { min-height: 32px; }
+.text-button:disabled { opacity: .5; }
+.hint { flex-wrap: wrap; }
+.alternate-codes { flex-basis: 100%; font-size: .875rem; }
+.sources { margin-top: 28px; font-size: .875rem; }
+.sources summary { cursor: pointer; font-weight: 800; }
+.sources ul { padding-inline-start: 22px; line-height: 1.6; }
+.sources a { color: inherit; text-underline-offset: 3px; }
+
+@media (max-width: 570px) {
+  .settings-fields { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+}

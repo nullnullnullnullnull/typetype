@@ -1,25 +1,27 @@
-import { lessons, type LessonId } from './cangjie'
+import type { Exercise, LessonId } from './cangjie'
 
 type Outcome = 'firstTry' | 'retried' | 'skipped'
 
 export interface Round {
   lesson: LessonId
+  exercises: readonly Exercise[]
   outcomes: Outcome[]
   entry: string
   hint: boolean
   wrongEntries: number
+  acceptedCode?: string
 }
 
 export type Action =
-  | { type: 'start'; lesson: LessonId }
+  | { type: 'start'; round: Round }
   | { type: 'edit'; value: string }
   | { type: 'append'; key: string }
   | { type: 'hint' }
   | { type: 'submit' }
   | { type: 'skip' }
 
-export function startRound(lesson: LessonId): Round {
-  return { lesson, outcomes: [], entry: '', hint: false, wrongEntries: 0 }
+export function startRound(lesson: LessonId, exercises: readonly Exercise[]): Round {
+  return { lesson, exercises, outcomes: [], entry: '', hint: false, wrongEntries: 0 }
 }
 
 export function roundStats(round: Round) {
@@ -35,8 +37,8 @@ export function roundStats(round: Round) {
 }
 
 export function practiceReducer(round: Round, action: Action): Round {
-  if (action.type === 'start') return startRound(action.lesson)
-  const exercise = lessons[round.lesson].exercises[round.outcomes.length]
+  if (action.type === 'start') return action.round
+  const exercise = round.exercises[round.outcomes.length]
   if (!exercise) return round
 
   switch (action.type) {
@@ -50,15 +52,19 @@ export function practiceReducer(round: Round, action: Action): Round {
       return { ...round, hint: !round.hint }
     case 'submit':
       if (!round.entry) return round
-      if (round.entry !== exercise.code) {
+      if (round.entry !== exercise.code && !exercise.alternateCodes?.includes(round.entry)) {
         return { ...round, entry: '', wrongEntries: round.wrongEntries + 1 }
       }
-      return advance(round, round.wrongEntries ? 'retried' : 'firstTry')
+      return advance(round, round.wrongEntries ? 'retried' : 'firstTry', round.entry)
     case 'skip':
       return advance(round, 'skipped')
   }
 }
 
-function advance(round: Round, outcome: Outcome): Round {
-  return { ...startRound(round.lesson), outcomes: [...round.outcomes, outcome] }
+function advance(round: Round, outcome: Outcome, acceptedCode?: string): Round {
+  return {
+    ...startRound(round.lesson, round.exercises),
+    outcomes: [...round.outcomes, outcome],
+    acceptedCode,
+  }
 }
