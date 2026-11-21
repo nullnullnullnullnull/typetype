@@ -22,6 +22,7 @@ MANIFEST = json.loads(Path(__file__).with_name('dictionary-sources.json').read_t
 CNS_URL = 'https://www.cns11643.gov.tw/searchSY.jsp?ID=122'
 NAER_PATH = quote('臺灣華語文能力基準漢字表_111-09-20.ods')
 JACK_URL = f"https://raw.githubusercontent.com/Jackchows/Cangjie5/{MANIFEST['cangjieCommit']}"
+TIGER_URL = f"https://raw.githubusercontent.com/lvyww/tiger-code/{MANIFEST['tigerCommit']}"
 URLS = {
     'moe.ods': 'https://language.moe.gov.tw/uploads/files/17694982751710.ods',
     'naer.ods': f'https://coct.naer.edu.tw/file/files/{NAER_PATH}',
@@ -29,6 +30,8 @@ URLS = {
     'Unicode-LICENSE.txt': 'https://www.unicode.org/license.txt',
     'cangjie5.txt': f'{JACK_URL}/Cangjie5.txt',
     'Cangjie5-LICENSE.txt': f'{JACK_URL}/LICENSE',
+    'tiger.txt': f'{TIGER_URL}/tables/tiger.txt',
+    'Tiger-LICENSE.txt': f'{TIGER_URL}/LICENSE',
 }
 TABLE_NS = {'t': 'urn:oasis:names:tc:opendocument:xmlns:table:1.0'}
 CNS_ROW = re.compile(
@@ -140,6 +143,21 @@ def character_codes(targets):
 def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
 
+def tiger_character_codes(targets):
+    codes = defaultdict(set)
+    table = (SOURCES / 'tiger.txt').read_text(encoding='utf-8-sig')
+    _, marker, rows = table.partition('[Data]\n')
+    require(marker, 'Tiger code table has no [Data] section')
+    for row in rows.splitlines():
+        code, separator, candidate = row.partition('\t')
+        if separator and candidate in targets and re.fullmatch(r'[a-z]{1,4}', code):
+            codes[candidate].add(code.upper())
+    require(targets == codes.keys(), f'Tiger codes missing for {sorted(targets - codes.keys())}')
+    return {
+        character: sorted(options, key=lambda code: (-len(code), code))
+        for character, options in sorted(codes.items())
+    }
+
 
 def generate():
     for name, checksum in MANIFEST['sha256'].items():
@@ -166,6 +184,8 @@ def generate():
             ],
         },
     }
+    tiger_targets = {character for bank in banks.values() for character in bank['full']}
+    tiger_codes = tiger_character_codes(tiger_targets)
 
     report = {
         'sources': MANIFEST,
@@ -183,12 +203,14 @@ def generate():
         }
 
     PUBLIC.mkdir(parents=True, exist_ok=True)
-    for name in ['Unicode-LICENSE.txt', 'Cangjie5-LICENSE.txt']:
+    for name in ['Unicode-LICENSE.txt', 'Cangjie5-LICENSE.txt', 'Tiger-LICENSE.txt']:
         shutil.copyfile(SOURCES / name, PUBLIC / name)
     write_json(PUBLIC / 'dictionaries.json', {'banks': banks, 'codes': codes})
+    write_json(PUBLIC / 'tiger-codes.json', tiger_codes)
     write_json(LOCAL / 'dictionary-report.json', report)
     print(json.dumps(report['banks'], ensure_ascii=False, indent=2))
     print(f'{len(codes)} unique playable characters, {len(report["multipleCodes"])} with multiple accepted codes')
+    print(f'{len(tiger_codes)} characters covered by the Tiger code table')
 
 
 if __name__ == '__main__':

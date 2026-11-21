@@ -1,9 +1,17 @@
-import type { Exercise, LessonId } from './cangjie'
+export interface Exercise {
+  character: string
+  code: string
+  alternateCodes?: readonly string[]
+  language?: 'zh-Hant-TW' | 'zh-Hans-CN'
+}
+
+export type LessonId = 'roots' | 'characters'
 
 type Outcome = 'firstTry' | 'retried' | 'skipped'
 
 export interface Round {
   lesson: LessonId
+  codeLimit: number
   exercises: readonly Exercise[]
   outcomes: Outcome[]
   entry: string
@@ -20,8 +28,8 @@ export type Action =
   | { type: 'submit' }
   | { type: 'skip' }
 
-export function startRound(lesson: LessonId, exercises: readonly Exercise[]): Round {
-  return { lesson, exercises, outcomes: [], entry: '', hint: false, wrongEntries: 0 }
+export function startRound(lesson: LessonId, exercises: readonly Exercise[], codeLimit: number): Round {
+  return { lesson, exercises, codeLimit, outcomes: [], entry: '', hint: false, wrongEntries: 0 }
 }
 
 export function roundStats(round: Round) {
@@ -46,9 +54,8 @@ export function practiceReducer(round: Round, action: Action): Round {
     case 'edit':
     case 'append': {
       const value = action.type === 'edit' ? action.value : round.entry + action.key
-      const limit = round.lesson === 'roots' ? 1 : 5
       const code = value.replace(/[^a-z]/gi, '').toUpperCase()
-      const entry = code.slice(0, limit)
+      const entry = code.slice(0, round.codeLimit)
       if (entry === code && codes.includes(entry)
         && !codes.some((answer) => answer.length > entry.length && answer.startsWith(entry))) {
         return solve(round, entry)
@@ -74,7 +81,7 @@ function solve(round: Round, code: string): Round {
 
 function advance(round: Round, outcome: Outcome, acceptedCode?: string): Round {
   return {
-    ...startRound(round.lesson, round.exercises),
+    ...startRound(round.lesson, round.exercises, round.codeLimit),
     outcomes: [...round.outcomes, outcome],
     acceptedCode,
   }

@@ -29,3 +29,10 @@ https://github.com/Jackchows/Cangjie5/tree/c9b64e77951cba48bdfa5de8eaedd1a908666
 原始來源：https://www.chinesecj.com/forum/forum.php?mod=viewthread&tid=2596
 TypeType 擷取練習字的完整碼，篩選可接受的替代碼並轉為 JSON。
 採所用版本的 MIT 聲明，版權聲明和授權全文見同目錄的 Cangjie5-LICENSE.txt。
+
+虎码取码
+资料来源：虎码输入法官方码表（Fcitx5 字词版）
+版本：3e1bff2f757806152ef5b701c709c24f54cf800f
+https://github.com/lvyww/tiger-code/tree/3e1bff2f757806152ef5b701c709c24f54cf800f
+TypeType 仅提取练习字库中单字的 1–4 位字母编码，去重后转为 JSON。
+授权：CC0 1.0，全文见同目录的 Tiger-LICENSE.txt。

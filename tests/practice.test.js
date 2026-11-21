@@ -55,7 +55,7 @@ test('mixed rounds fill a short quota from the other bank without duplicates', (
 
 test('an incorrect edit waits for confirmation and a correct alternate code advances automatically', () => {
   const exercises = [{ character: '次', code: 'MMNO', alternateCodes: ['IMNO'] }]
-  const round = startRound('characters', exercises)
+  const round = startRound('characters', exercises, 5)
   const edited = practiceReducer(round, { type: 'edit', value: 'im' })
   assert.equal(edited.entry, 'IM')
   assert.equal(edited.wrongEntries, 0)
@@ -73,7 +73,7 @@ test('screen keys automatically advance one question after a complete code', () 
   const round = startRound('characters', [
     { character: '明', code: 'AB' },
     { character: '林', code: 'DD' },
-  ])
+  ], 5)
   const firstKey = practiceReducer(round, { type: 'append', key: 'A' })
   assert.equal(roundStats(firstKey).completed, 0)
   const solved = practiceReducer(firstKey, { type: 'append', key: 'B' })
@@ -91,7 +91,7 @@ test('every overlapping answer in the dictionary supports manual short codes and
   )
   assert.ok(pairs.length > 0)
   for (const { character, answers: [code, ...alternateCodes], short, long } of pairs) {
-    const round = startRound('characters', [{ character, code, alternateCodes }])
+    const round = startRound('characters', [{ character, code, alternateCodes }], 5)
     const waiting = practiceReducer(round, { type: 'edit', value: short })
     assert.equal(waiting.entry, short)
     assert.equal(roundStats(waiting).completed, 0)
@@ -135,4 +135,44 @@ test('the published dictionary supports all bank and difficulty combinations', (
   }
 
   assert.deepEqual(data.codes['次'], ['IMNO', 'MMNO'])
+})
+
+test('the Tiger table covers the same banks and supports all six practice settings', () => {
+  const { banks } = JSON.parse(readFileSync(new URL('../public/dictionaries.json', import.meta.url), 'utf8'))
+  const codes = JSON.parse(readFileSync(new URL('../public/tiger-codes.json', import.meta.url), 'utf8'))
+  const characters = new Set(Object.values(banks).flatMap((bank) => bank.full))
+  assert.equal(Object.keys(codes).length, characters.size)
+  for (const character of characters) {
+    assert.ok(codes[character]?.length)
+    assert.ok(codes[character].every((code) => /^[A-Z]{1,4}$/.test(code)))
+  }
+  for (const difficulty of ['beginner', 'full']) {
+    for (const selected of [['traditional'], ['simplified'], ['traditional', 'simplified']]) {
+      const questions = drawQuestions({ banks, codes }, { banks: selected, difficulty })
+      const eligible = new Set(selected.flatMap((bank) => banks[bank][difficulty]))
+      assert.equal(questions.length, 20)
+      assert.equal(new Set(questions.map(({ character }) => character)).size, 20)
+      assert.ok(questions.every(({ character, code }) => eligible.has(character) && codes[character].includes(code)))
+      if (selected.length === 2) {
+        assert.equal(questions.filter(({ language }) => language === 'zh-Hant-TW').length, 10)
+      }
+    }
+  }
+})
+
+test('Tiger short codes wait for confirmation and four-letter codes advance automatically', () => {
+  const codes = JSON.parse(readFileSync(new URL('../public/tiger-codes.json', import.meta.url), 'utf8'))
+  const [code, ...alternateCodes] = codes['国']
+  assert.deepEqual([code, ...alternateCodes], ['RNID', 'RNI', 'RN'])
+  const round = startRound('characters', [{ character: '国', code, alternateCodes }], 4)
+  const waiting = [...'RN'].reduce((state, key) => practiceReducer(state, { type: 'append', key }), round)
+  assert.equal(waiting.entry, 'RN')
+  assert.equal(roundStats(waiting).completed, 0)
+  assert.equal(practiceReducer(waiting, { type: 'submit' }).acceptedCode, 'RN')
+  const long = practiceReducer(waiting, { type: 'edit', value: 'rnid' })
+  assert.equal(long.acceptedCode, 'RNID')
+  assert.equal(roundStats(long).completed, 1)
+  const tooLong = practiceReducer(round, { type: 'edit', value: 'rnidx' })
+  assert.equal(tooLong.entry, 'RNID')
+  assert.equal(roundStats(tooLong).completed, 0)
 })

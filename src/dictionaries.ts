@@ -1,4 +1,4 @@
-import type { Exercise } from './cangjie.ts'
+import type { Exercise } from './practice'
 
 export const banks = ['traditional', 'simplified'] as const
 type Bank = typeof banks[number]
@@ -11,8 +11,10 @@ export interface Settings {
 
 export interface Dictionaries {
   banks: Record<Bank, Record<Difficulty, string[]>>
-  codes: Record<string, string[]>
+  codes: CodeTable
 }
+
+export type CodeTable = Record<string, string[]>
 
 export const defaultSettings: Settings = { banks: ['traditional'], difficulty: 'beginner' }
 export const roundSize = 20

@@ -1,9 +1,4 @@
-export interface Exercise {
-  character: string
-  code: string
-  alternateCodes?: readonly string[]
-  language?: 'zh-Hant-TW' | 'zh-Hans-CN'
-}
+import type { Exercise } from './practice'
 
 const keyLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 const rootLabels = '日月金木水火土竹戈十大中一弓人心手口尸廿山女田難卜符'
@@ -11,8 +6,6 @@ const rootLabels = '日月金木水火土竹戈十大中一弓人心手口尸廿
 export const roots = Object.fromEntries(
   Array.from(keyLetters, (key, index) => [key, rootLabels[index]]),
 )
-
-export const keyboardRows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']
 
 export const lessons = {
   roots: {
@@ -24,8 +17,5 @@ export const lessons = {
   },
   characters: {
     label: '常用字取碼',
-    prompt: '輸入這個字的完整倉頡碼。',
   },
 }
-
-export type LessonId = keyof typeof lessons

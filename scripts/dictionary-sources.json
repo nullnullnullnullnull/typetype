@@ -1,5 +1,6 @@
 {
   "cangjieCommit": "c9b64e77951cba48bdfa5de8eaedd1a908666b9b",
+  "tigerCommit": "3e1bff2f757806152ef5b701c709c24f54cf800f",
   "cnsIndexSha256": "9bc20f22499ff3181c115e0d08bd3fbfe8351a4f4293d817dfa334be8e38c42e",
   "sha256": {
     "moe.ods": "e97e29ed2aa222bbfc12c18a6d96f0270440b1d73f64366d9ad22d7fe9012408",
@@ -7,6 +8,8 @@
     "Unihan.zip": "4c93ea9c1f636451729a840978f1667a53886af37ba854fdcce109721c63d43e",
     "Unicode-LICENSE.txt": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
     "cangjie5.txt": "9ef8b462ad0f7c70463307aa81c1110d28650b9cdbd76905d0f2362a362fcbcc",
-    "Cangjie5-LICENSE.txt": "cf2746abe0b37ba14fb0e735eb868d418e4d335b9040887f579da958f95ffa77"
+    "Cangjie5-LICENSE.txt": "cf2746abe0b37ba14fb0e735eb868d418e4d335b9040887f579da958f95ffa77",
+    "tiger.txt": "36e16b76d66f4f5be2341396e8eb400e44244d528823a5eabb4e90c9c5c1de24",
+    "Tiger-LICENSE.txt": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
   }
 }

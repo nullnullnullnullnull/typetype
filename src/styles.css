@@ -36,7 +36,17 @@ button:disabled { cursor: default; }
 }
 .brand-accent { color: #5636a6; }
 .brand-period { color: var(--ink); }
-.header-label { font-size: .875rem; font-weight: 750; }
+.method-nav { display: flex; gap: 8px; }
+.method-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding-inline: 9px;
+  color: inherit;
+  font-size: .875rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
 
 .intro { padding-block: 40px 25px; }
 .edition { display: inline-block; padding: 4px 11px; border: var(--rule); background: var(--purple); font-size: .875rem; font-weight: 800; }
@@ -52,7 +62,7 @@ h1 span { color: #5636a6; margin-inline-start: .07em; }
   font-weight: 800;
 }
 .mode-button { min-height: 43px; padding-inline: 15px; }
-.mode-button[aria-pressed="true"], .button-primary { background: var(--lime); }
+.mode-button[aria-pressed="true"], .method-nav a[aria-current="page"], .button-primary { background: var(--lime); }
 .mode-button:hover, .button:not(:disabled):hover { background: var(--purple); }
 .mode-button:active, .button:not(:disabled):active, .key:not(:disabled):active {
   transform: translate(2px, 2px);
