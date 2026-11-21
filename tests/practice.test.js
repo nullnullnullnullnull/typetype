@@ -53,15 +53,53 @@ test('mixed rounds fill a short quota from the other bank without duplicates', (
   assert.deepEqual(drawQuestions(data, { banks: [], difficulty: 'beginner' }), [])
 })
 
-test('a complete alternate code advances the same round and reports the accepted answer', () => {
+test('an incorrect edit waits for confirmation and a correct alternate code advances automatically', () => {
   const exercises = [{ character: '次', code: 'MMNO', alternateCodes: ['IMNO'] }]
   const round = startRound('characters', exercises)
-  const wrong = practiceReducer(practiceReducer(round, { type: 'edit', value: 'im' }), { type: 'submit' })
+  const edited = practiceReducer(round, { type: 'edit', value: 'im' })
+  assert.equal(edited.entry, 'IM')
+  assert.equal(edited.wrongEntries, 0)
+  assert.equal(roundStats(edited).completed, 0)
+  const wrong = practiceReducer(edited, { type: 'submit' })
   assert.equal(wrong.wrongEntries, 1)
-  const solved = practiceReducer(practiceReducer(wrong, { type: 'edit', value: 'imno' }), { type: 'submit' })
+  assert.equal(wrong.entry, '')
+  const solved = practiceReducer(wrong, { type: 'edit', value: 'imno' })
   assert.equal(solved.exercises, exercises)
   assert.equal(solved.acceptedCode, 'IMNO')
   assert.deepEqual(roundStats(solved), { completed: 1, solved: 1, skipped: 0, accuracy: 0 })
+})
+
+test('screen keys automatically advance one question after a complete code', () => {
+  const round = startRound('characters', [
+    { character: '明', code: 'AB' },
+    { character: '林', code: 'DD' },
+  ])
+  const firstKey = practiceReducer(round, { type: 'append', key: 'A' })
+  assert.equal(roundStats(firstKey).completed, 0)
+  const solved = practiceReducer(firstKey, { type: 'append', key: 'B' })
+  assert.equal(solved.entry, '')
+  assert.deepEqual(roundStats(solved), { completed: 1, solved: 1, skipped: 0, accuracy: 100 })
+  assert.equal(practiceReducer(solved, { type: 'submit' }), solved)
+})
+
+test('every overlapping answer in the dictionary supports manual short codes and automatic long codes', () => {
+  const { codes } = JSON.parse(readFileSync(new URL('../public/dictionaries.json', import.meta.url), 'utf8'))
+  const pairs = Object.entries(codes).flatMap(([character, answers]) =>
+    answers.flatMap((short) => answers
+      .filter((long) => long !== short && long.startsWith(short))
+      .map((long) => ({ character, answers, short, long }))),
+  )
+  assert.ok(pairs.length > 0)
+  for (const { character, answers: [code, ...alternateCodes], short, long } of pairs) {
+    const round = startRound('characters', [{ character, code, alternateCodes }])
+    const waiting = practiceReducer(round, { type: 'edit', value: short })
+    assert.equal(waiting.entry, short)
+    assert.equal(roundStats(waiting).completed, 0)
+    assert.equal(practiceReducer(waiting, { type: 'submit' }).acceptedCode, short)
+    const solved = practiceReducer(waiting, { type: 'edit', value: long })
+    assert.equal(solved.acceptedCode, long)
+    assert.equal(roundStats(solved).completed, 1)
+  }
 })
 
 test('settings retain the last playable selection when the checkboxes are cleared', () => {

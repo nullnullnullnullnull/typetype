@@ -40,25 +40,36 @@ export function practiceReducer(round: Round, action: Action): Round {
   if (action.type === 'start') return action.round
   const exercise = round.exercises[round.outcomes.length]
   if (!exercise) return round
+  const codes = [exercise.code, ...(exercise.alternateCodes ?? [])]
 
   switch (action.type) {
     case 'edit':
     case 'append': {
       const value = action.type === 'edit' ? action.value : round.entry + action.key
       const limit = round.lesson === 'roots' ? 1 : 5
-      return { ...round, entry: value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, limit) }
+      const code = value.replace(/[^a-z]/gi, '').toUpperCase()
+      const entry = code.slice(0, limit)
+      if (entry === code && codes.includes(entry)
+        && !codes.some((answer) => answer.length > entry.length && answer.startsWith(entry))) {
+        return solve(round, entry)
+      }
+      return { ...round, entry }
     }
     case 'hint':
       return { ...round, hint: !round.hint }
     case 'submit':
       if (!round.entry) return round
-      if (round.entry !== exercise.code && !exercise.alternateCodes?.includes(round.entry)) {
+      if (!codes.includes(round.entry)) {
         return { ...round, entry: '', wrongEntries: round.wrongEntries + 1 }
       }
-      return advance(round, round.wrongEntries ? 'retried' : 'firstTry', round.entry)
+      return solve(round, round.entry)
     case 'skip':
       return advance(round, 'skipped')
   }
+}
+
+function solve(round: Round, code: string): Round {
+  return advance(round, round.wrongEntries ? 'retried' : 'firstTry', code)
 }
 
 function advance(round: Round, outcome: Outcome, acceptedCode?: string): Round {

@@ -139,7 +139,7 @@ export function App({ dictionaries }: { dictionaries: Dictionaries }) {
                 </form>
 
                 <div className={round.wrongEntries ? 'feedback feedback-error' : 'feedback'} id="answer-feedback" role="status">
-                  {feedback || '按 Enter 確認，也可以點選螢幕鍵盤。'}
+                  {feedback || '輸入正確會自動跳題，也可按 Enter 確認。'}
                 </div>
 
                 <div className="question-actions">
