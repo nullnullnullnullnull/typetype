@@ -198,3 +198,10 @@ progress::-moz-progress-bar { background: var(--ink); }
 @media (max-width: 570px) {
   .settings-fields { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 }
+
+.stroke-guide { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; width: 100%; }
+.stroke-guide svg { width: min(160px, 100%); height: auto; background: var(--paper); border: var(--rule); }
+.stroke-guide > div { flex: 1 1 200px; }
+.stroke-steps, .guide-search { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.guide-search { margin: 16px 0; }
+.guide-search input { width: 6em; font: inherit; border: var(--rule); padding: 6px; }

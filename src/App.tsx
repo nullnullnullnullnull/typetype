@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState, useSyncExternalStore, type For
 import { lessons, roots } from './cangjie'
 import { availableCount, drawQuestions, readSettings, roundSize, saveSettings, type CodeTable, type Dictionaries, type Settings } from './dictionaries'
 import { practiceReducer, roundStats, startRound, type LessonId } from './practice'
+import { StrokeDirectory, StrokeGuide } from './StrokeGuide'
 import { PracticeSettings } from './PracticeSettings'
 
 const lessonIds: LessonId[] = ['roots', 'characters']
@@ -261,6 +262,8 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
                     {isCangjie ? '其他完整碼' : '其他可用编码'} {exercise.alternateCodes.join(' · ')}
                   </span>
                 )}
+                {isCangjie && round.lesson === 'characters' && round.hint &&
+                  <StrokeGuide key={exercise.character} char={exercise.character} code={exercise.code} />}
               </div>
             </>
           ) : (
@@ -325,6 +328,7 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
         </div>
       </div>
 
+      {isCangjie && <StrokeDirectory codes={dictionaries.codes} />}
       <details className="sources">
         <summary>字庫來源與授權</summary>
         <ul>
