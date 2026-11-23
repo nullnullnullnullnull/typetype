@@ -1,4 +1,4 @@
-import { banks, roundSize, type Dictionaries, type Settings } from './dictionaries'
+import { banks, playable, roundSize, type Dictionaries, type Settings } from './dictionaries'
 
 const bankLabels = {
   traditional: '臺灣常用字',
@@ -21,6 +21,7 @@ interface Props {
 }
 
 export function PracticeSettings({ dictionaries, settings, count, pending, onChange, onStart }: Props) {
+  const valid = playable(settings, count)
   return (
     <section className="panel settings-panel" aria-label="取碼練習設定">
       <div className="settings-fields">
@@ -67,14 +68,32 @@ export function PracticeSettings({ dictionaries, settings, count, pending, onCha
             </label>
           </div>
         </fieldset>
+        <fieldset>
+          <legend>練習長度</legend>
+          <div className="difficulty-options">
+            <label><input type="radio" name="length" checked={settings.mode === 'fixed'}
+              onChange={() => onChange({ ...settings, mode: 'fixed' })} />自訂題數</label>
+            <label><input type="radio" name="length" checked={settings.mode === 'endless'}
+              onChange={() => onChange({ ...settings, mode: 'endless',
+                quantity: Number.isSafeInteger(settings.quantity) && settings.quantity > 0 ? settings.quantity : roundSize })} />無限練習</label>
+          </div>
+          {settings.mode === 'fixed' && <div className="quantity-control">
+            <label htmlFor="quantity">每輪題數</label>
+            <input id="quantity" type="number" min="1" max={count} step="1"
+              value={Number.isFinite(settings.quantity) ? settings.quantity : ''}
+              aria-invalid={count > 0 && !valid} aria-describedby={count > 0 && !valid ? 'quantity-error' : undefined}
+              onChange={event => onChange({ ...settings, quantity: event.target.valueAsNumber })} />
+            {count > 0 && !valid && <small id="quantity-error" role="alert">請輸入 1 至 {count} 的整數。</small>}
+          </div>}
+        </fieldset>
       </div>
       <div className="settings-footer">
         <p aria-live="polite">
           {settings.banks.length === 0
             ? '請至少選擇一個字庫。'
-            : `可練 ${count.toLocaleString()} 字 · 每輪 ${roundSize} 題${pending ? ' · 下輪套用' : ''}`}
+            : `可練 ${count.toLocaleString()} 字 · ${settings.mode === 'endless' ? '無限練習' : '自訂題數'}${pending ? ' · 下輪套用' : ''}`}
         </p>
-        {pending && count >= roundSize && (
+        {pending && valid && (
           <button className="button button-small" type="button" onClick={onStart}>
             套用並開新一輪
           </button>

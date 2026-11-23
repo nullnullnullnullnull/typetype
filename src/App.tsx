@@ -1,6 +1,6 @@
-import { useEffect, useReducer, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { lessons, roots } from './cangjie'
-import { availableCount, drawQuestions, readSettings, roundSize, saveSettings, type CodeTable, type Dictionaries, type Settings } from './dictionaries'
+import { availableCount, drawQuestions, readSettings, playable, saveSettings, type CodeTable, type Dictionaries, type Settings } from './dictionaries'
 import { practiceReducer, roundStats, startRound, type LessonId } from './practice'
 import { StrokeDirectory, StrokeGuide } from './StrokeGuide'
 import { PracticeSettings } from './PracticeSettings'
@@ -118,9 +118,12 @@ interface PracticeProps {
 function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }: PracticeProps) {
   const method = methods[methodId]
   const isCangjie = methodId === 'cangjie'
-  const [settings, setSettings] = useState(initialSettings)
+  const [settings, setSettings] = useState(() => ({
+    ...initialSettings, quantity: initialSettings.mode === 'endless' ? initialSettings.quantity :
+      Math.min(initialSettings.quantity, availableCount(dictionaries, initialSettings)),
+  }))
   const [activeSettings, setActiveSettings] = useState(settings)
-  const [round, dispatch] = useReducer(practiceReducer, initialSettings, (selection) =>
+  const [round, dispatch] = useReducer(practiceReducer, settings, (selection) =>
     startRound('characters', drawQuestions(dictionaries, selection), method.codeLimit),
   )
   const input = useRef<HTMLInputElement>(null)
@@ -129,14 +132,21 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
   const lesson = lessons[round.lesson]
   const total = round.exercises.length
   const stats = roundStats(round)
-  const exercise = round.exercises[stats.completed]
-  const finished = stats.completed === total
-  const previous = round.exercises[stats.completed - 1]
-  const previousOutcome = round.outcomes.at(-1)
+  const endless = round.lesson === 'characters' && activeSettings.mode === 'endless'
+  const exercise = round.ended ? undefined : round.exercises[round.index]
+  const finished = round.ended || (!endless && !exercise)
+  const { previous, previousOutcome } = round
+  useLayoutEffect(() => {
+    if (endless && !exercise && !round.ended) {
+      dispatch({ type: 'continue', exercises: drawQuestions(dictionaries, activeSettings, Math.random, previous?.character) })
+    }
+  }, [endless, exercise, round.ended, dictionaries, activeSettings, previous])
   const accuracy = stats.accuracy === null ? '—' : `${stats.accuracy}%`
-  const count = availableCount(dictionaries, settings)
-  const canRestart = round.lesson === 'roots' || count >= roundSize
-  const pending = activeSettings.difficulty !== settings.difficulty
+  const count = useMemo(() => availableCount(dictionaries, settings), [dictionaries, settings])
+  const canRestart = round.lesson === 'roots' || playable(settings, count)
+  const pending = activeSettings.mode !== settings.mode
+    || (settings.mode === 'fixed' && activeSettings.quantity !== settings.quantity)
+    || activeSettings.difficulty !== settings.difficulty
     || activeSettings.banks.length !== settings.banks.length
     || settings.banks.some((bank) => !activeSettings.banks.includes(bank))
 
@@ -146,12 +156,12 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
 
   function changeSettings(next: Settings) {
     setSettings(next)
-    onSettingsChange(next)
+    if (playable(next, availableCount(dictionaries, next))) onSettingsChange(next)
   }
 
   function begin(lessonId: LessonId) {
     if (lessonId === 'characters') {
-      const next = count >= roundSize ? settings : activeSettings
+      const next = playable(settings, count) ? settings : activeSettings
       dispatch({ type: 'start', round: startRound(lessonId, drawQuestions(dictionaries, next), method.codeLimit) })
       setActiveSettings(next)
       return
@@ -167,7 +177,7 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
 
   const feedback = round.wrongEntries
     ? `再試一次！這題已答錯 ${round.wrongEntries} 次。`
-    : previousOutcome === 'skipped'
+    : previous && previousOutcome === 'skipped'
       ? `已跳過「${previous.character}」，正確碼是 ${previous.code}。`
       : previous
         ? `答對了！「${previous.character}」的${method.codeLabel}是 ${round.acceptedCode}。`
@@ -208,7 +218,7 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
         <section className="panel practice-panel" aria-label={lesson.label}>
           <div className="panel-heading">
             <h2>{lesson.label}</h2>
-            <span className="question-count">{finished ? total : stats.completed + 1} / {total} 題</span>
+            <span className="question-count">{endless ? (finished ? '練習結束' : `第 ${stats.completed + 1} 題 · 無限練習`) : `${finished ? total : stats.completed + 1} / ${total} 題`}</span>
           </div>
 
           {exercise ? (
@@ -252,6 +262,8 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
                 <button className="button button-small" type="button" onClick={() => dispatch({ type: 'skip' })}>
                   跳過
                 </button>
+                {endless && <button className="button button-small" type="button"
+                  onClick={() => dispatch({ type: 'end' })}>結束練習</button>}
               </div>
 
               <div className="hint" id="hint" hidden={!round.hint}>
@@ -268,7 +280,7 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
             </>
           ) : (
             <div className="summary">
-              <h3 tabIndex={-1} ref={summary}>本輪完成！</h3>
+              <h3 tabIndex={-1} ref={summary}>{endless ? '練習結束' : '本輪完成！'}</h3>
               <p>答對 {stats.solved} 題，跳過 {stats.skipped} 題。首答正確率 {accuracy}。</p>
               <p className="feedback">{feedback}</p>
               <button className="button button-primary" type="button" disabled={!canRestart}
@@ -289,10 +301,10 @@ function Practice({ methodId, dictionaries, initialSettings, onSettingsChange }:
               </button>
             </div>
             <dl className="metrics">
-              <div><dt>已完成</dt><dd>{stats.completed}<span> / {total}</span></dd></div>
+              <div><dt>已完成</dt><dd>{stats.completed}{endless ? ' 題' : <span> / {total}</span>}</dd></div>
               <div><dt>首答正確率</dt><dd>{accuracy}</dd></div>
             </dl>
-            <progress value={stats.completed} max={total} aria-labelledby="progress-title" />
+            {!endless && <progress value={stats.completed} max={total} aria-labelledby="progress-title" />}
           </section>
 
           <section className="panel keyboard-panel" aria-labelledby="keyboard-title">

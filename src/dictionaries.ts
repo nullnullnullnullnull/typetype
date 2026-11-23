@@ -6,6 +6,8 @@ type Difficulty = 'beginner' | 'full'
 
 export interface Settings {
   banks: Bank[]
+  mode: 'fixed' | 'endless'
+  quantity: number
   difficulty: Difficulty
 }
 
@@ -16,8 +18,8 @@ export interface Dictionaries {
 
 export type CodeTable = Record<string, string[]>
 
-export const defaultSettings: Settings = { banks: ['traditional'], difficulty: 'beginner' }
 export const roundSize = 20
+export const defaultSettings: Settings = { banks: ['traditional'], difficulty: 'beginner', mode: 'fixed', quantity: roundSize }
 const storageKey = 'typetype.cangjie.settings'
 
 export function readSettings(): Settings {
@@ -25,7 +27,10 @@ export function readSettings(): Settings {
     const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null')
     const selected = banks.filter((bank) => Array.isArray(saved?.banks) && saved.banks.includes(bank))
     if (selected.length && (saved.difficulty === 'beginner' || saved.difficulty === 'full')) {
-      return { banks: selected, difficulty: saved.difficulty }
+      return { banks: selected, difficulty: saved.difficulty,
+        mode: saved.mode === 'endless' ? 'endless' : 'fixed',
+        quantity: Number.isSafeInteger(saved.quantity) && saved.quantity > 0 ? saved.quantity : roundSize,
+      }
     }
   } catch {
     // Practice also works when browser storage is unavailable.
@@ -46,41 +51,51 @@ export function availableCount(data: Dictionaries, settings: Settings) {
   return new Set(settings.banks.flatMap((bank) => data.banks[bank][settings.difficulty])).size
 }
 
-export function drawQuestions(data: Dictionaries, settings: Settings, random = Math.random): Exercise[] {
-  const selected = banks.filter((bank) => settings.banks.includes(bank))
-  const pools = selected.map((bank) => ({
-    bank,
-    characters: data.banks[bank][settings.difficulty],
-  }))
+export function playable(settings: Settings, count: number) {
+  return count > 0 && (settings.mode === 'endless' ||
+    (Number.isSafeInteger(settings.quantity) && settings.quantity > 0 && settings.quantity <= count))
+}
 
-  if (!pools.length) return []
-
-  const picked = new Map<string, Bank>()
-  const quota = roundSize / pools.length
-  for (const pool of shuffled(pools, random)) {
-    const other = pools.find((candidate) => candidate !== pool)
-    const otherCharacters = new Set(other?.characters)
-    const candidates = shuffled(pool.characters.filter((character) => !picked.has(character)), random)
-    const distinct = other && candidates.find((character) => !otherCharacters.has(character))
-    const selection = distinct
-      ? [distinct, ...candidates.filter((character) => character !== distinct).slice(0, quota - 1)]
-      : candidates.slice(0, quota)
-    for (const character of selection) picked.set(character, pool.bank)
-  }
-
-  if (picked.size < roundSize) {
-    const remaining = new Map<string, Bank>()
-    for (const pool of pools) {
-      for (const character of pool.characters) {
-        if (!picked.has(character)) remaining.set(character, pool.bank)
+export function drawQuestions(data: Dictionaries, settings: Settings, random = Math.random, previous?: string): Exercise[] {
+  const selected = shuffled(banks.filter(bank => settings.banks.includes(bank)), random)
+  if (!selected.length) return []
+  const pool = (bank: Bank) => data.banks[bank][settings.difficulty]
+  const size = settings.mode === 'endless' ? availableCount(data, settings) : settings.quantity ?? roundSize
+  const picked: [string, Bank][] = []
+  if (selected.length === 1) {
+    for (const char of shuffled(pool(selected[0]), random).slice(0, size)) picked.push([char, selected[0]])
+  } else {
+    const [a, b] = selected
+    const aSet = new Set(pool(a))
+    const bSet = new Set(pool(b))
+    const shared = shuffled(pool(a).filter(c => bSet.has(c)), random)
+    const onlyA = pool(a).filter(c => !bSet.has(c))
+    const onlyB = pool(b).filter(c => !aSet.has(c))
+    const quotaA = Math.min(aSet.size, Math.max(Math.ceil(size / 2), size - bSet.size))
+    const quotaB = size - quotaA
+    // Split shared characters once, leaving each bank enough candidates for its quota.
+    const split = Math.max(quotaA - onlyA.length,
+      Math.min(Math.ceil(shared.length / 2), shared.length - Math.max(0, quotaB - onlyB.length)))
+    function pick(bank: Bank, exclusive: string[], common: string[], quota: number) {
+      if (quota <= 0) return
+      const candidates = shuffled(exclusive, random)
+      const first = size > 1 ? candidates.pop() : undefined
+      if (first) picked.push([first, bank])
+      for (const char of shuffled([...candidates, ...common], random).slice(0, quota - Number(!!first))) {
+        picked.push([char, bank])
       }
     }
-    for (const [character, bank] of shuffled([...remaining], random).slice(0, roundSize - picked.size)) {
-      picked.set(character, bank)
-    }
+    pick(a, onlyA, shared.slice(0, split), quotaA)
+    pick(b, onlyB, shared.slice(split), quotaB)
   }
-
-  return shuffled([...picked], random).map(([character, bank]) => {
+  const ordered = shuffled(picked, random)
+  if (ordered.length > 1 && ordered[0][0] === previous) {
+    const next = 1 + Math.floor(random() * (ordered.length - 1))
+    const first = ordered[0]
+    ordered[0] = ordered[next]
+    ordered[next] = first
+  }
+  return ordered.map(([character, bank]) => {
     const [code, ...alternateCodes] = data.codes[character]
     return { character, code, alternateCodes, language: bank === 'traditional' ? 'zh-Hant-TW' : 'zh-Hans-CN' }
   })

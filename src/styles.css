@@ -165,7 +165,7 @@ progress::-moz-progress-bar { background: var(--ink); }
 }
 
 .settings-panel { margin-bottom: 23px; }
-.settings-fields { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 20px; }
+.settings-fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px; }
 .settings-fields fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .settings-fields legend { padding: 0; margin-bottom: 10px; font-weight: 900; }
 .bank-presets, .bank-options, .difficulty-options { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -205,3 +205,8 @@ progress::-moz-progress-bar { background: var(--ink); }
 .stroke-steps, .guide-search { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .guide-search { margin: 16px 0; }
 .guide-search input { width: 6em; font: inherit; border: var(--rule); padding: 6px; }
+
+.quantity-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.quantity-control label { border: 0; padding: 0; }
+.quantity-control input { width: 6em; padding: 6px; border: 2px solid var(--ink); font: inherit; }
+.quantity-control small { flex-basis: 100%; }

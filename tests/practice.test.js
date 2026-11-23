@@ -112,7 +112,7 @@ test('settings retain the last playable selection when the checkboxes are cleare
   try {
     saveSettings(selection)
     saveSettings({ banks: [], difficulty: 'beginner' })
-    assert.deepEqual(readSettings(), selection)
+    assert.deepEqual(readSettings(), { ...selection, quantity: 20, mode: 'fixed' })
   } finally {
     delete globalThis.localStorage
   }
@@ -175,4 +175,27 @@ test('Tiger short codes wait for confirmation and four-letter codes advance auto
   const tooLong = practiceReducer(round, { type: 'edit', value: 'rnidx' })
   assert.equal(tooLong.entry, 'RNID')
   assert.equal(roundStats(tooLong).completed, 0)
+})
+
+
+test('custom lengths and endless cycles cover the union without duplicate or adjacent repeats', () => {
+  const selection = { banks: ['traditional', 'simplified'], difficulty: 'beginner' }
+  for (const quantity of [1, 3, 75]) {
+    const questions = drawQuestions(fixture, { ...selection, mode: 'fixed', quantity })
+    assert.equal(questions.length, quantity)
+    assert.equal(new Set(questions.map(q => q.character)).size, quantity)
+    assert.equal(Math.abs(questions.filter(q => q.language === 'zh-Hant-TW').length * 2 - quantity), 1)
+  }
+  const endless = { ...selection, mode: 'endless', quantity: 3 }
+  const cycle = drawQuestions(fixture, endless, () => 0)
+  const next = drawQuestions(fixture, endless, () => 0, cycle[0].character)
+  assert.notEqual(next[0].character, cycle[0].character)
+  assert.deepEqual(new Set(next.map(q => q.character)), new Set(cycle.map(q => q.character)))
+  let round = startRound('characters', [cycle[0]], 5)
+  round = practiceReducer(round, { type: 'skip' })
+  round = practiceReducer(round, { type: 'continue', exercises: next })
+  assert.equal(round.index, 0)
+  assert.equal(roundStats(round).skipped, 1)
+  round = practiceReducer(round, { type: 'end' })
+  assert.equal(practiceReducer(round, { type: 'skip' }), round)
 })
